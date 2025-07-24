@@ -6,6 +6,7 @@ import time
 import math
 import torch
 import numpy as np
+import csv
 from vmas import make_env
 from vmas.simulator.core import Agent
 from vmas.simulator.utils import save_video
@@ -21,6 +22,7 @@ from helpers import (
     num_steps,
     max_force,
     spline_error,
+    detect_collision,
 )
 
 
@@ -171,13 +173,10 @@ def use_vmas_env(
             print("All agents reached their goals!")
             break
 
-        for i, a in enumerate(env.agents):
-            for j, b in enumerate(env.agents):
-                if j <= i:
-                    continue
-                if env.scenario.world.collides(a, b):
-                    print(f"Collision detected between {a.name} and {b.name}")
-                    collision_count += 1
+        # Check for collisions
+        if detect_collision(env):
+            collision_count += 1
+            print("Collision detected!")
 
         if render:
             frame = env.render(
@@ -189,12 +188,22 @@ def use_vmas_env(
                 frame_list.append(frame)
 
     total_time = time.time() - init_time
-    print(
-        f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
-        f"for {scenario_name} scenario."
-    )
+    # print(
+    #     f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
+    #     f"for {scenario_name} scenario."
+    # )
 
-    print(f"Total collisions detected: {collision_count}")
+    # print(f"Total collisions detected: {collision_count}")
+
+    print(f"{num_agents} robots, {collision_count} collisions, {total_time:.2f}s")
+    with open("results.csv", mode="a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            "CBS",
+            num_agents,
+            collision_count,
+            f"{total_time:.2f}"
+    ])
 
     if render and save_render:
         save_video(scenario_name, frame_list, fps=4 / env.scenario.world.dt)

@@ -11,26 +11,17 @@ from vmas import make_env
 from vmas.simulator.core import Agent
 from vmas.simulator.utils import save_video
 from cbs import cbs
-
-
-num_of_agents = 15
-grid_scale_factor = 5
-kp = 0.8
-margin_of_error = 0.15
-num_steps = 1000
-avoid_radius = 0.15
-repulse_strength = 0.05
-
-def _get_deterministic_action(agent: Agent, continuous: bool, env):
-    if continuous:
-        action = -agent.action.u_range_tensor.expand(env.batch_dim, agent.action_size)
-    else:
-        action = (
-            torch.tensor([1], device=env.device, dtype=torch.long)
-            .unsqueeze(-1)
-            .expand(env.batch_dim, 1)
-        )
-    return action.clone()
+from helpers import (
+    num_agents,
+    grid_scale_factor,
+    kp,
+    margin_of_error,
+    avoid_radius,
+    repulse_strength,
+    num_steps,
+    max_force,
+    detect_collision,
+)
 
 
 def use_vmas_env(
@@ -139,7 +130,6 @@ def use_vmas_env(
 
                 # Combine and cap force
                 force = attractive_force + repulsive_force
-                max_force = 0.3
                 force_norm = torch.norm(force)
                 if force_norm > max_force:
                     force = force / force_norm * max_force
@@ -184,5 +174,5 @@ if __name__ == "__main__":
         random_action=False,
         continuous_actions=True,
         # Environment specific
-        n_agents=num_of_agents,
+        n_agents=num_agents,
     )

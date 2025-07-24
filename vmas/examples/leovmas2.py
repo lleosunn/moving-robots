@@ -124,6 +124,10 @@ def use_vmas_env(
 
         obs, rews, dones, info = env.step(actions)
 
+        if dones.all():
+            print("All agents reached their goals!")
+            break
+
         # Check for collisions
         if detect_collision(env):
             collision_count += 1
@@ -139,11 +143,14 @@ def use_vmas_env(
                 frame_list.append(frame)
 
     total_time = time.time() - init_time
-    print(
-        f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
-        f"for {scenario_name} scenario."
-    )
-    print(f"Total collisions detected: {collision_count}")
+    # print(
+    #     f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
+    #     f"for {scenario_name} scenario."
+    # )
+    # print(f"Total collisions detected: {collision_count}")
+
+    print(f"{num_agents} robots, {collision_count} collisions, {total_time:.2f}s")
+
 
     if render and save_render:
         save_video(scenario_name, frame_list, fps=1 / env.scenario.world.dt)

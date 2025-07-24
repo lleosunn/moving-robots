@@ -1,13 +1,14 @@
 import torch
 
+seed = 123
 num_agents = 15
 grid_scale_factor = 5
 kp = 0.8
-margin_of_error = 0.1
+margin_of_error = 0.15
 num_steps = 400
 avoid_radius = 0.15
 repulse_strength = 0.05
-max_force = 0.3
+max_force = 0.4
 spline_error = 0
 
 def detect_collision(env):

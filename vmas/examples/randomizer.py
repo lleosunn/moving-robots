@@ -1,5 +1,7 @@
 import random
-from helpers import grid_scale_factor, num_agents
+from helpers import grid_scale_factor, num_agents, seed
+
+random.seed(seed)
 
 used_positions = set()
 
