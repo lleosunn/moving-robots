@@ -1,7 +1,6 @@
 import random
+from helpers import grid_scale_factor, num_agents
 
-grid_scale_factor = 5
-num_agents = 8
 used_positions = set()
 
 def generate_unique_position():

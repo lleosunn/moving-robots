@@ -4,30 +4,21 @@
 import random
 import time
 import math
-
 import torch
-
 from vmas import make_env
 from vmas.simulator.core import Agent
 from vmas.simulator.utils import save_video
-
-
-num_of_agents = 15
-avoid_radius = 0.15
-repulse_strength = 0.05
-num_steps = 1000
-
-
-def _get_deterministic_action(agent: Agent, continuous: bool, env):
-    if continuous:
-        action = -agent.action.u_range_tensor.expand(env.batch_dim, agent.action_size)
-    else:
-        action = (
-            torch.tensor([1], device=env.device, dtype=torch.long)
-            .unsqueeze(-1)
-            .expand(env.batch_dim, 1)
-        )
-    return action.clone()
+from helpers import (
+    num_agents,
+    grid_scale_factor,
+    kp,
+    margin_of_error,
+    avoid_radius,
+    repulse_strength,
+    num_steps,
+    max_force,
+    detect_collision
+)
 
 
 def use_vmas_env(
@@ -80,6 +71,7 @@ def use_vmas_env(
 
     frame_list = []  # For creating a gif
     init_time = time.time()
+    collision_count = 0
     step = 0
 
     for _ in range(n_steps):
@@ -104,7 +96,6 @@ def use_vmas_env(
                 # Collision avoidance
                 repulsive_force = torch.zeros_like(attractive_force)
 
-
                 for other in env.agents:
                     if other is agent:
                         continue
@@ -116,7 +107,6 @@ def use_vmas_env(
 
                 # Combine and cap force
                 force = attractive_force + repulsive_force
-                max_force = 0.3
                 force_norm = torch.norm(force)
                 if force_norm > max_force:
                     force = force / force_norm * max_force
@@ -131,17 +121,13 @@ def use_vmas_env(
                 actions.update({agent.name: action})
             else:
                 actions.append(action)
-            
-            # GOAL POSITIONING WORKS
-            # goal_pos = agent.goal.state.pos
-            # goal_pos = tuple(goal_pos.squeeze(0).tolist())
-            # agent_pos = agent.state.pos
-            # agent_pos = tuple(agent_pos.squeeze(0).tolist())
-            # print(f"{agent.name} goal position: {goal_pos}")
-            # print(f"{agent.name} agent position: {agent_pos}")
-
 
         obs, rews, dones, info = env.step(actions)
+
+        # Check for collisions
+        if detect_collision(env):
+            collision_count += 1
+            print("Collision detected!")
 
         if render:
             frame = env.render(
@@ -157,6 +143,7 @@ def use_vmas_env(
         f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
         f"for {scenario_name} scenario."
     )
+    print(f"Total collisions detected: {collision_count}")
 
     if render and save_render:
         save_video(scenario_name, frame_list, fps=1 / env.scenario.world.dt)
@@ -170,5 +157,5 @@ if __name__ == "__main__":
         random_action=False,
         continuous_actions=True,
         # Environment specific
-        n_agents=num_of_agents,
+        n_agents=num_agents,
     )

@@ -4,35 +4,24 @@
 import random
 import time
 import math
-
 import torch
-
+import numpy as np
 from vmas import make_env
 from vmas.simulator.core import Agent
 from vmas.simulator.utils import save_video
 from cbs import cbs
 from scipy.interpolate import splprep, splev
-import numpy as np
-
-
-num_of_agents = 15
-grid_scale_factor = 5
-kp = 0.8
-margin_of_error = 0.1
-num_steps = 1000
-avoid_radius = 0.15
-repulse_strength = 0.05
-
-def _get_deterministic_action(agent: Agent, continuous: bool, env):
-    if continuous:
-        action = -agent.action.u_range_tensor.expand(env.batch_dim, agent.action_size)
-    else:
-        action = (
-            torch.tensor([1], device=env.device, dtype=torch.long)
-            .unsqueeze(-1)
-            .expand(env.batch_dim, 1)
-        )
-    return action.clone()
+from helpers import (
+    num_agents,
+    grid_scale_factor,
+    kp,
+    margin_of_error,
+    avoid_radius,
+    repulse_strength,
+    num_steps,
+    max_force,
+    spline_error,
+)
 
 
 def use_vmas_env(
@@ -85,6 +74,7 @@ def use_vmas_env(
 
     frame_list = []  # For creating a gif
     init_time = time.time()
+    collision_count = 0
     step = 0
 
     agents = []
@@ -97,11 +87,7 @@ def use_vmas_env(
         starts[i] = tuple((agent.state.pos[0] * grid_scale_factor).tolist())
         goals[i] = tuple((agent.goal.state.pos[0] * grid_scale_factor).tolist())
 
-
     plan = cbs(agents, starts, goals)
-    # plan is a dictionary that maps agent indices to a list of positions
-    # need to remake plan with spline points
-    print(plan)
 
     spline_plan = {}
 
@@ -109,11 +95,10 @@ def use_vmas_env(
         # k is agent index, v is a list of positions
         x, y = zip(*v)
         k_val = min(3, len(v) - 1)
-        tck, u = splprep([x, y], s=0, k=k_val)
+        tck, u = splprep([x, y], s=spline_error, k=k_val)
         u_fine = np.linspace(0, 1, 50)
         x_smooth, y_smooth = splev(u_fine, tck)
         spline_plan[k] = list(zip(x_smooth, y_smooth))
-
 
     for _ in range(n_steps):
         step += 1
@@ -126,43 +111,45 @@ def use_vmas_env(
 
         actions = {} if dict_actions else []
 
-        for i, agent in enumerate(env.agents):            
+        for i, agent in enumerate(env.agents):
             if not random_action:
                 # if agent is close to the next position in plan, update velocity vector to move there
                 agent_pos = agent.state.pos
-                next_pos = torch.tensor([spline_plan[i][0][0] / grid_scale_factor, 
-                                         spline_plan[i][0][1] / grid_scale_factor], 
-                                         device=env.device)
+                next_pos = torch.tensor(
+                    [
+                        spline_plan[i][0][0] / grid_scale_factor,
+                        spline_plan[i][0][1] / grid_scale_factor,
+                    ],
+                    device=env.device,
+                )
                 error = next_pos - agent_pos
                 if error.norm() < margin_of_error and len(spline_plan[i]) > 1:
                     spline_plan[i].pop(0)
 
                 attractive_force = kp * error
 
-                # # Collision avoidance
-                # repulsive_force = torch.zeros_like(attractive_force)
+                # Collision avoidance
+                repulsive_force = torch.zeros_like(attractive_force)
 
-                # for other in env.agents:
-                #     if other is agent:
-                #         continue
-                #     other_pos = other.state.pos
-                #     vec = agent_pos - other_pos
-                #     dist = torch.norm(vec)
-                #     if dist < avoid_radius and dist > 1e-6:
-                #         repulsive_force += repulse_strength * vec / dist**2
-
+                for other in env.agents:
+                    if other is agent:
+                        continue
+                    other_pos = other.state.pos
+                    vec = agent_pos - other_pos
+                    dist = torch.norm(vec)
+                    if dist < avoid_radius and dist > 1e-6:
+                        repulsive_force += repulse_strength * vec / dist**2
 
                 # Combine and cap force
                 if len(spline_plan[i]) == 1:
                     # Use proportional control for the final point
-                    force = attractive_force
+                    force = attractive_force + repulsive_force
                 else:
                     # Use constant force in direction of error
                     if error.norm() != 0:
                         force = error / error.norm() * 1
                     else:
                         force = torch.zeros_like(error)
-                max_force = 0.3
                 force_norm = torch.norm(force)
                 if force_norm > max_force:
                     force = force / force_norm * max_force
@@ -180,6 +167,18 @@ def use_vmas_env(
 
         obs, rews, dones, info = env.step(actions)
 
+        if dones.all():
+            print("All agents reached their goals!")
+            break
+
+        for i, a in enumerate(env.agents):
+            for j, b in enumerate(env.agents):
+                if j <= i:
+                    continue
+                if env.scenario.world.collides(a, b):
+                    print(f"Collision detected between {a.name} and {b.name}")
+                    collision_count += 1
+
         if render:
             frame = env.render(
                 mode="rgb_array",
@@ -195,8 +194,10 @@ def use_vmas_env(
         f"for {scenario_name} scenario."
     )
 
+    print(f"Total collisions detected: {collision_count}")
+
     if render and save_render:
-        save_video(scenario_name, frame_list, fps=1 / env.scenario.world.dt)
+        save_video(scenario_name, frame_list, fps=4 / env.scenario.world.dt)
 
 
 if __name__ == "__main__":
@@ -207,5 +208,5 @@ if __name__ == "__main__":
         random_action=False,
         continuous_actions=True,
         # Environment specific
-        n_agents=num_of_agents,
+        n_agents=num_agents,
     )
