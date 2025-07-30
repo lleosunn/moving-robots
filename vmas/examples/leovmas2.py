@@ -12,7 +12,7 @@ from helpers import (
     num_agents,
     grid_scale_factor,
     kp,
-    margin_of_error,
+    following_distance,
     avoid_radius,
     repulse_strength,
     num_steps,
@@ -21,7 +21,7 @@ from helpers import (
 )
 
 
-def use_vmas_env(
+def run_no_planning(
     render: bool = False,
     save_render: bool = False,
     num_envs: int = 1,
@@ -76,7 +76,7 @@ def use_vmas_env(
 
     for _ in range(n_steps):
         step += 1
-        print(f"Step {step}")
+        # print(f"Step {step}")
 
         # VMAS actions can be either a list of tensors (one per agent)
         # or a dict of tensors (one entry per agent with its name as key)
@@ -142,22 +142,19 @@ def use_vmas_env(
             if save_render:
                 frame_list.append(frame)
 
-    total_time = time.time() - init_time
-    # print(
-    #     f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
-    #     f"for {scenario_name} scenario."
-    # )
-    # print(f"Total collisions detected: {collision_count}")
-
-    print(f"{num_agents} robots, {collision_count} collisions, {total_time:.2f}s")
+    wall_time = time.time() - init_time
+    sim_time = step * env.scenario.world.dt
 
 
     if render and save_render:
         save_video(scenario_name, frame_list, fps=1 / env.scenario.world.dt)
+    print(f'{collision_count} collisions, {sim_time:.2f}s')
+
+    return collision_count, sim_time
 
 
 if __name__ == "__main__":
-    use_vmas_env(
+    run_no_planning(
         scenario_name="leoscenario",
         render=True,
         save_render=False,

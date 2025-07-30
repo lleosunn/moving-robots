@@ -14,14 +14,19 @@ from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.sensors import Lidar
 from vmas.simulator.utils import Color, ScenarioUtils, X, Y
 
-import random
+
+from vmas.examples.helpers import (
+    num_agents,
+    grid_scale_factor,
+    seed,
+)
+
+from vmas.examples.runtest import starts, goals
 
 if typing.TYPE_CHECKING:
     from vmas.simulator.rendering import Geom
 
-
-n_agents = 8
-
+# # swap scenario with 8 agents
 # starts = [
 #     [-1.0, 0.0], 
 #     [1.0, 0.0],
@@ -43,8 +48,10 @@ n_agents = 8
 #     [1.0, -1.0],
 # ]
 
-starts = [[-0.8, 0.2], [-1.0, 0.8], [-0.2, 0.8], [0.4, 0.6], [0.0, -1.0], [0.2, -1.0], [0.2, 0.6], [-0.8, -0.8], [-1.0, 1.0], [0.8, 0.8], [0.2, -0.6], [-0.8, 0.4], [0.8, -0.4], [0.0, 0.8], [0.2, 0.8]]
-goals = [[-0.6, 0.6], [-0.2, -0.4], [0.2, -0.4], [0.6, -0.4], [1.0, 0.2], [1.0, 0.4], [-0.2, 0.0], [-0.6, -0.6], [0.6, -1.0], [0.4, -1.0], [0.4, -0.8], [-0.8, 0.0], [0.0, 1.0], [0.8, -1.0], [-0.2, 0.4]]
+
+# random scenario with 15 agents
+# starts = [[-0.8, 0.2], [-1.0, 0.8], [-0.2, 0.8], [0.4, 0.6], [0.0, -1.0], [0.2, -1.0], [0.2, 0.6], [-0.8, -0.8], [-1.0, 1.0], [0.8, 0.8], [0.2, -0.6], [-0.8, 0.4], [0.8, -0.4], [0.0, 0.8], [0.2, 0.8]]
+# goals = [[-0.6, 0.6], [-0.2, -0.4], [0.2, -0.4], [0.6, -0.4], [1.0, 0.2], [1.0, 0.4], [-0.2, 0.0], [-0.6, -0.6], [0.6, -1.0], [0.4, -1.0], [0.4, -0.8], [-0.8, 0.0], [0.0, 1.0], [0.8, -1.0], [-0.2, 0.4]]
 
 
 class Scenario(BaseScenario):

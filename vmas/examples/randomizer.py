@@ -1,7 +1,7 @@
 import random
 from helpers import grid_scale_factor, num_agents, seed
 
-random.seed(seed)
+random.seed(8954)
 
 used_positions = set()
 
@@ -18,3 +18,20 @@ goals = [generate_unique_position() for _ in range(num_agents)]
 
 print(f"starts = {starts}")
 print(f"goals = {goals}")
+
+def generate_random_seeds():
+    seeds = {}
+    used = set()
+    for i in range(2, 16):
+        seeds[i] = []
+        for _ in range(16):
+            while True:
+                seed_value = random.randint(0, 10000)
+                if seed_value not in used:
+                    used.add(seed_value)
+                    seeds[i].append(seed_value)
+                    break
+
+    return seeds
+
+# print(generate_random_seeds())

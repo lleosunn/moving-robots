@@ -16,7 +16,7 @@ from helpers import (
     num_agents,
     grid_scale_factor,
     kp,
-    margin_of_error,
+    following_distance,
     avoid_radius,
     repulse_strength,
     num_steps,
@@ -26,7 +26,7 @@ from helpers import (
 )
 
 
-def use_vmas_env(
+def run_planning(
     render: bool = False,
     save_render: bool = False,
     num_envs: int = 1,
@@ -104,7 +104,7 @@ def use_vmas_env(
 
     for _ in range(n_steps):
         step += 1
-        print(f"Step {step}")
+        # print(f"Step {step}")
 
         # VMAS actions can be either a list of tensors (one per agent)
         # or a dict of tensors (one entry per agent with its name as key)
@@ -125,7 +125,7 @@ def use_vmas_env(
                     device=env.device,
                 )
                 error = next_pos - agent_pos
-                if error.norm() < margin_of_error and len(spline_plan[i]) > 1:
+                if error.norm() < following_distance and len(spline_plan[i]) > 1:
                     spline_plan[i].pop(0)
 
                 attractive_force = kp * error
@@ -187,30 +187,19 @@ def use_vmas_env(
             if save_render:
                 frame_list.append(frame)
 
-    total_time = time.time() - init_time
-    # print(
-    #     f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
-    #     f"for {scenario_name} scenario."
-    # )
+    wall_time = time.time() - init_time
+    sim_time = step * env.scenario.world.dt
 
-    # print(f"Total collisions detected: {collision_count}")
-
-    print(f"{num_agents} robots, {collision_count} collisions, {total_time:.2f}s")
-    with open("results.csv", mode="a", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow([
-            "CBS",
-            num_agents,
-            collision_count,
-            f"{total_time:.2f}"
-    ])
 
     if render and save_render:
-        save_video(scenario_name, frame_list, fps=4 / env.scenario.world.dt)
+        save_video(scenario_name, frame_list, fps=3 / env.scenario.world.dt)
+
+    print(f'{collision_count} collisions, {sim_time:.2f}s')
+    return collision_count, sim_time
 
 
 if __name__ == "__main__":
-    use_vmas_env(
+    run_planning(
         scenario_name="leoscenario",
         render=True,
         save_render=False,

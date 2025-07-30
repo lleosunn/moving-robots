@@ -15,7 +15,7 @@ from helpers import (
     num_agents,
     grid_scale_factor,
     kp,
-    margin_of_error,
+    following_distance,
     avoid_radius,
     repulse_strength,
     num_steps,
@@ -74,6 +74,7 @@ def use_vmas_env(
 
     frame_list = []  # For creating a gif
     init_time = time.time()
+    collision_count = 0
     step = 0
 
     agents = []
@@ -110,7 +111,7 @@ def use_vmas_env(
                                          plan[i][0][1] / grid_scale_factor], 
                                          device=env.device)
                 error = next_pos - agent_pos
-                if error.norm() < margin_of_error and len(plan[i]) > 1:
+                if error.norm() < following_distance and len(plan[i]) > 1:
                     plan[i].pop(0)
 
                 attractive_force = kp * error
@@ -147,6 +148,15 @@ def use_vmas_env(
 
         obs, rews, dones, info = env.step(actions)
 
+        if dones.all():
+            print("All agents reached their goals!")
+            break
+
+        # Check for collisions
+        if detect_collision(env):
+            collision_count += 1
+            print("Collision detected!")
+
         if render:
             frame = env.render(
                 mode="rgb_array",
@@ -157,10 +167,8 @@ def use_vmas_env(
                 frame_list.append(frame)
 
     total_time = time.time() - init_time
-    print(
-        f"It took: {total_time}s for {n_steps} steps of {num_envs} parallel environments on device {device} "
-        f"for {scenario_name} scenario."
-    )
+    print(f"{num_agents} robots, {collision_count} collisions, {total_time:.2f}s")
+
 
     if render and save_render:
         save_video(scenario_name, frame_list, fps=1 / env.scenario.world.dt)

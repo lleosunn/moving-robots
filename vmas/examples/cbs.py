@@ -1,6 +1,8 @@
 import heapq
 from collections import deque
 import math
+from helpers import grid_scale_factor
+
 
 class CBSNode:
     def __init__(self, constraints, solution, cost):
@@ -52,9 +54,11 @@ def astar(agent, start, goal, constraints):
             continue
         best_g[key] = g
 
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1),]:
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             nx, ny = current[0] + dx, current[1] + dy
             next_pos = (nx, ny)
+            if not (-grid_scale_factor <= nx <= grid_scale_factor and -grid_scale_factor <= ny <= grid_scale_factor):
+                continue
             new_time = time + 1
 
             # Constraint checks
@@ -191,9 +195,28 @@ def cbs(agents, starts, goals):
 
 # Example usage
 if __name__ == '__main__':
-    agents = [0, 1, 3]
-    starts = {0: (0, 0), 1: (2, 0), 3: (1, 1)}
-    goals = {0: (2, 0), 1: (0, 0), 3: (-1, -1)}
+    agents = [0, 1, 2, 3, 4, 5, 6, 7]
+    starts = {
+    0: (-10, -6),
+    1: (-2, -2),
+    2: (-2, 2),
+    3: (4, 0),
+    4: (6, -2),
+    5: (8, -10),
+    6: (10, -2),
+    7: (2, 0)
+    }
+
+    goals = {
+        0: (-2, 8),
+        1: (6, -4),
+        2: (-8, 0),
+        3: (-2, -4),
+        4: (-10, -4),
+        5: (-2, 10),
+        6: (6, 8),
+        7: (4, -4)
+    }
 
     solution = cbs(agents, starts, goals)
     if solution:
